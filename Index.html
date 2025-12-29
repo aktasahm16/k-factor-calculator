@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Effective Length Factor (K) Calculator | Semi-Rigid Connections</title>
+    <meta name="description" content="Calculate precise K-factors for aluminum columns with semi-rigid connections using Salama (2014) method">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .section {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3b82f6;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 5px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .results {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .result-label {
+            font-weight: 500;
+            color: #475569;
+        }
+        
+        .result-value {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 16px;
+        }
+        
+        .highlight {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .highlight h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        
+        .highlight .big-number {
+            font-size: 48px;
+            font-weight: 800;
+        }
+        
+        .interpretation {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+        }
+        
+        .interpretation strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #92400e;
+        }
+        
+        footer {
+            background: #1e293b;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        footer a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏗️ Effective Length Factor (K) Calculator</h1>
+            <p class="subtitle">Semi-Rigid Connection Analysis for Aluminum Columns | Based on Salama (2014)</p>
+        </header>
+        
+        <div class="main-content">
+            <!-- LEFT PANEL: INPUTS -->
+            <div>
+                <div class="section">
+                    <h2 class="section-title">📐 Section Geometry</h2>
+                    <div class="input-group">
+                        <label>Flange Width (b) [mm]</label>
+                        <input type="number" id="b" value="120" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Flange Thickness (tf) [mm]</label>
+                        <input type="number" id="tf" value="10" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Web Height (h) [mm]</label>
+                        <input type="number" id="h" value="200" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Web Thickness (tw) [mm]</label>
+                        <input type="number" id="tw" value="8" step="0.1">
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">⚙️ Material & Column</h2>
+                    <div class="input-group">
+                        <label>Alloy Type</label>
+                        <select id="material">
+                            <option value="70000,260">6082-T6 (E=70 GPa)</option>
+                            <option value="69000,140">6063-T5 (E=69 GPa)</option>
+                            <option value="69000,240">6061-T6 (E=69 GPa)</option>
+                            <option value="72000,505">7075-T6 (E=72 GPa)</option>
+                            <option value="73000,345">2024-T3 (E=73 GPa)</option>
+                            <option value="73000,395">2024-T42 (E=73 GPa)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Column Length (L) [mm]</label>
+                        <input type="number" id="L" value="3000" step="1">
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">🔗 Connection Details</h2>
+                    <div class="input-group">
+                        <label>Connection Type</label>
+                        <select id="connType">
+                            <option value="0.6">Riveted</option>
+                            <option value="0.8">Bolted (Bearing)</option>
+                            <option value="1.2">Bolted (Slip-Critical)</option>
+                            <option value="1.0">Hi-Lock</option>
+                            <option value="10">Welded</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Total Fasteners (both ends)</label>
+                        <input type="number" id="fasteners" value="8" step="1" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label>Fastener Diameter [mm]</label>
+                        <input type="number" id="diameter" value="10" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Pitch Distance [mm]</label>
+                        <input type="number" id="pitch" value="50" step="1">
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">🏢 Frame Type</h2>
+                    <div class="input-group">
+                        <label>
+                            <input type="radio" name="frame" value="nonsway" checked> Non-Sway (Braced)
+                        </label>
+                        <label>
+                            <input type="radio" name="frame" value="sway"> Sway (Unbraced)
+                        </label>
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="calculate()">🧮 Calculate K Factor</button>
+            </div>
+            
+            <!-- RIGHT PANEL: RESULTS -->
+            <div>
+                <div class="section">
+                    <h2 class="section-title">📊 Section Properties</h2>
+                    <div id="sectionResults"></div>
+                </div>
+                
+                <div class="highlight">
+                    <h3>Effective Length Factor</h3>
+                    <div class="big-number" id="kValue">-</div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">📈 Detailed Results</h2>
+                    <div id="detailedResults"></div>
+                </div>
+                
+                <div class="interpretation" id="interpretation" style="display:none;">
+                    <strong>Interpretation:</strong>
+                    <span id="interpText"></span>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p><strong>Reference:</strong> Salama, M. I. (2014). New simple equations for effective length factors. <em>HBRC Journal</em>, 10(3), 260–267.</p>
+            <p style="margin-top: 10px;">Developed by <a href="https://github.com/ahmetaktas1903-netizen" target="_blank">Ahmet Aktas</a> | Structural Analysis Engineer</p>
+        </footer>
+    </div>
+    
+    <script>
+        function calculate() {
+            // Get inputs
+            const b = parseFloat(document.getElementById('b').value);
+            const tf = parseFloat(document.getElementById('tf').value);
+            const h = parseFloat(document.getElementById('h').value);
+            const tw = parseFloat(document.getElementById('tw').value);
+            const L = parseFloat(document.getElementById('L').value);
+            
+            const [E, fy] = document.getElementById('material').value.split(',').map(Number);
+            const kConn = parseFloat(document.getElementById('connType').value);
+            const nFast = parseInt(document.getElementById('fasteners').value);
+            const dia = parseFloat(document.getElementById('diameter').value);
+            const pitch = parseFloat(document.getElementById('pitch').value);
+            const frameType = document.querySelector('input[name="frame"]:checked').value;
+            
+            // Section properties
+            const A = 2*b*tf + h*tw;
+            const Iy = (2*b*Math.pow(tf,3)/12) + (tw*Math.pow(h,3)/12) + 2*b*tf*Math.pow((h/2 + tf/2), 2);
+            const ry = Math.sqrt(Iy/A);
+            
+            // Connection stiffness
+            const kFastener = kConn * E * Math.pow(dia, 2) / pitch;
+            const leverArm = h/2;
+            const Sj = (kFastener * nFast * Math.pow(leverArm, 2)) / 1e9; // kNm/rad
+            
+            // G parameter
+            const GColumn = (E * Iy / 1e12) / L;
+            const G = Sj > 1e-6 ? GColumn / Sj : 10;
+            
+            // K factor (Salama 2014)
+            let K;
+            const GSum = 2*G;
+            
+            if (frameType === 'nonsway') {
+                K = 0.5 + 0.5 * (GSum / (2 + GSum));
+                K = Math.max(0.5, Math.min(1.0, K));
+            } else {
+                K = GSum < 100 ? Math.sqrt(1.6 + 0.67*GSum) : Math.sqrt(67.6);
+                K = Math.max(1.0, Math.min(10.0, K));
+            }
+            
+            // Effective length & slenderness
+            const Leff = K * L;
+            const lambda = Leff / ry;
+            
+            // Connection classification
+            const SjRigid = 25 * (E * Iy / 1e12) / L;
+            let connClass;
+            if (Sj > SjRigid) connClass = "🟢 RIGID";
+            else if (Sj > 0.5*SjRigid) connClass = "🟡 SEMI-RIGID";
+            else connClass = "🔴 PINNED";
+            
+            // Display results
+            document.getElementById('sectionResults').innerHTML = `
+                <div class="result-item">
+                    <span class="result-label">Area (A)</span>
+                    <span class="result-value">${A.toFixed(0)} mm²</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Moment of Inertia (Iy)</span>
+                    <span class="result-value">${(Iy/1e6).toFixed(2)} ×10⁶ mm⁴</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Radius of Gyration (ry)</span>
+                    <span class="result-value">${ry.toFixed(1)} mm</span>
+                </div>
+            `;
+            
+            document.getElementById('kValue').textContent = K.toFixed(3);
+            
+            document.getElementById('detailedResults').innerHTML = `
+                <div class="result-item">
+                    <span class="result-label">Connection Stiffness (Sj)</span>
+                    <span class="result-value">${Sj.toFixed(2)} kNm/rad</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Connection Class</span>
+                    <span class="result-value">${connClass}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">G Parameter</span>
+                    <span class="result-value">${G.toFixed(4)}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Effective Length (KL)</span>
+                    <span class="result-value">${Leff.toFixed(0)} mm</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Slenderness Ratio (λ)</span>
+                    <span class="result-value">${lambda.toFixed(1)}</span>
+                </div>
+            `;
+            
+            // Interpretation
+            let interp;
+            if (frameType === 'nonsway') {
+                if (K < 0.65) interp = "🟢 Highly Restrained (approaching fixed-fixed)";
+                else if (K < 0.85) interp = "🟡 Moderately Restrained (semi-rigid)";
+                else if (K < 1.0) interp = "🟠 Lightly Restrained (approaching pinned)";
+                else interp = "🔴 Pinned (no restraint)";
+            } else {
+                if (K < 1.5) interp = "🟢 Good Sway Restraint";
+                else if (K < 2.0) interp = "🟡 Moderate Sway";
+                else interp = "🔴 High Sway Risk! (add bracing)";
+            }
+            
+            document.getElementById('interpretation').style.display = 'block';
+            document.getElementById('interpText').textContent = interp;
+        }
+        
+        // Auto-calculate on load
+        window.onload = () => calculate();
+    </script>
+</body>
+</html>
