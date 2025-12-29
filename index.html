@@ -318,60 +318,100 @@
         </footer>
     </div>
     
-    <script>
+        <script>
         function calculate() {
-            // Get inputs
+            // --- INPUTS ---
             const b = parseFloat(document.getElementById('b').value);
             const tf = parseFloat(document.getElementById('tf').value);
             const h = parseFloat(document.getElementById('h').value);
             const tw = parseFloat(document.getElementById('tw').value);
             const L = parseFloat(document.getElementById('L').value);
             
-            const [E, fy] = document.getElementById('material').value.split(',').map(Number);
+            const [E, fy] = document.getElementById('material').value.split(',').map(Number); // E in MPa (N/mm^2)
             const kConn = parseFloat(document.getElementById('connType').value);
             const nFast = parseInt(document.getElementById('fasteners').value);
             const dia = parseFloat(document.getElementById('diameter').value);
             const pitch = parseFloat(document.getElementById('pitch').value);
             const frameType = document.querySelector('input[name="frame"]:checked').value;
             
-            // Section properties
-            const A = 2*b*tf + h*tw;
+            // --- SECTION PROPERTIES ---
+            const A = 2*b*tf + h*tw; // mm^2
+            // Moment of Inertia (Iy) [mm^4]
             const Iy = (2*b*Math.pow(tf,3)/12) + (tw*Math.pow(h,3)/12) + 2*b*tf*Math.pow((h/2 + tf/2), 2);
-            const ry = Math.sqrt(Iy/A);
+            const ry = Math.sqrt(Iy/A); // mm
             
-            // Connection stiffness
-            const kFastener = kConn * E * Math.pow(dia, 2) / pitch;
-            const leverArm = h/2;
-            const Sj = (kFastener * nFast * Math.pow(leverArm, 2)) / 1e9; // kNm/rad
+            // --- STIFFNESS CALCULATIONS (UNIT FIX) ---
             
-            // G parameter
-            const GColumn = (E * Iy / 1e12) / L;
-            const G = Sj > 1e-6 ? GColumn / Sj : 10;
+            // 1. Connection Stiffness (Sj)
+            // kFastener unit: N/mm
+            const kFastener = kConn * E * Math.pow(dia, 2) / pitch; 
+            const leverArm = h/2; // mm
             
-            // K factor (Salama 2014)
+            // Sj calculation in N.mm
+            const Sj_Nmm = kFastener * nFast * Math.pow(leverArm, 2);
+            
+            // Convert Sj to kNm/rad (Correct division is 1e6, not 1e9)
+            // 1 kNm = 1,000,000 Nmm
+            const Sj = Sj_Nmm / 1e6; 
+            
+            // 2. Column Stiffness (EI/L)
+            // E (MPa) * Iy (mm^4) / L (mm) = N.mm
+            const EI_L_Nmm = (E * Iy) / L;
+            
+            // Convert to kNm (consistent with Sj)
+            const EI_L = EI_L_Nmm / 1e6; 
+
+            // --- G PARAMETER ---
+            // G = (EI/L) / Sj  (Stiffness Ratio)
+            // Note: If Sj is 0 (Pinned), G goes to Infinity.
+            const G = Sj > 1e-6 ? EI_L / Sj : 1000;
+            
+            // --- K FACTOR (Salama 2014) ---
             let K;
-            const GSum = 2*G;
+            // Salama uses G as defined above (Column / Connection)
+            const GSum = 2*G; // Assuming equal connections at both ends
             
             if (frameType === 'nonsway') {
+                // Sway inhibited
                 K = 0.5 + 0.5 * (GSum / (2 + GSum));
                 K = Math.max(0.5, Math.min(1.0, K));
             } else {
-                K = GSum < 100 ? Math.sqrt(1.6 + 0.67*GSum) : Math.sqrt(67.6);
-                K = Math.max(1.0, Math.min(10.0, K));
+                // Sway permitted
+                // Adjusted logic for stability
+                if (GSum >= 100) {
+                     K = Math.sqrt(1.6 + 0.67*100); // Cap at theoretical max practical
+                } else {
+                     K = Math.sqrt(1.6 + 0.67*GSum);
+                }
+                K = Math.max(1.0, Math.min(5.0, K)); // Limit typical range
             }
             
             // Effective length & slenderness
             const Leff = K * L;
             const lambda = Leff / ry;
             
-            // Connection classification
-            const SjRigid = 25 * (E * Iy / 1e12) / L;
-            let connClass;
-            if (Sj > SjRigid) connClass = "🟢 RIGID";
-            else if (Sj > 0.5*SjRigid) connClass = "🟡 SEMI-RIGID";
-            else connClass = "🔴 PINNED";
+            // --- CLASSIFICATION (Eurocode 3 / AISC Logic) ---
+            // Rigid: Sj >= 25 * EI/L
+            // Pinned: Sj <= 0.5 * EI/L
             
-            // Display results
+            const rigidThreshold = 25 * EI_L;
+            const pinnedThreshold = 0.5 * EI_L;
+            
+            let connClass;
+            let classColor;
+            
+            if (Sj >= rigidThreshold) {
+                connClass = "🟢 RIGID";
+                classColor = "green";
+            } else if (Sj <= pinnedThreshold) {
+                connClass = "🔴 PINNED";
+                classColor = "red";
+            } else {
+                connClass = "🟡 SEMI-RIGID";
+                classColor = "#eab308"; // dark yellow
+            }
+            
+            // --- DISPLAY RESULTS ---
             document.getElementById('sectionResults').innerHTML = `
                 <div class="result-item">
                     <span class="result-label">Area (A)</span>
@@ -395,8 +435,12 @@
                     <span class="result-value">${Sj.toFixed(2)} kNm/rad</span>
                 </div>
                 <div class="result-item">
+                    <span class="result-label">Column Stiffness (EI/L)</span>
+                    <span class="result-value">${EI_L.toFixed(2)} kNm</span>
+                </div>
+                <div class="result-item">
                     <span class="result-label">Connection Class</span>
-                    <span class="result-value">${connClass}</span>
+                    <span class="result-value" style="color:${classColor}">${connClass}</span>
                 </div>
                 <div class="result-item">
                     <span class="result-label">G Parameter</span>
@@ -412,25 +456,35 @@
                 </div>
             `;
             
-            // Interpretation
+            // Interpretation Text
             let interp;
             if (frameType === 'nonsway') {
-                if (K < 0.65) interp = "🟢 Highly Restrained (approaching fixed-fixed)";
-                else if (K < 0.85) interp = "🟡 Moderately Restrained (semi-rigid)";
-                else if (K < 1.0) interp = "🟠 Lightly Restrained (approaching pinned)";
-                else interp = "🔴 Pinned (no restraint)";
+                if (connClass.includes("RIGID")) interp = "Approaching fixed-fixed behavior (K ≈ 0.5)";
+                else if (connClass.includes("PINNED")) interp = "Behaving as pinned column (K ≈ 1.0)";
+                else interp = "Semi-rigid behavior. Resistance is between pinned and fixed.";
             } else {
-                if (K < 1.5) interp = "🟢 Good Sway Restraint";
-                else if (K < 2.0) interp = "🟡 Moderate Sway";
-                else interp = "🔴 High Sway Risk! (add bracing)";
+                if (connClass.includes("RIGID")) interp = "Good sway frame stability.";
+                else if (connClass.includes("PINNED")) interp = "⚠️ DANGER: Unstable mechanism if unbraced!";
+                else interp = "Flexible sway frame. Check drift limits.";
             }
             
-            document.getElementById('interpretation').style.display = 'block';
+            const interpBox = document.getElementById('interpretation');
+            interpBox.style.display = 'block';
             document.getElementById('interpText').textContent = interp;
+            
+            // Change color based on result
+            if(connClass.includes("PINNED") && frameType === 'sway') {
+                interpBox.style.backgroundColor = "#fee2e2";
+                interpBox.style.borderLeftColor = "#ef4444";
+            } else {
+                interpBox.style.backgroundColor = "#fef3c7";
+                interpBox.style.borderLeftColor = "#f59e0b";
+            }
         }
         
         // Auto-calculate on load
         window.onload = () => calculate();
     </script>
+
 </body>
 </html>
